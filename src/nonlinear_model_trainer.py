@@ -1,0 +1,59 @@
+import os
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import GridSearchCV, cross_validate, KFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.neural_network import MLPRegressor
+from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
+import config
+
+def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenizer_name: str, language_scope: str, selected_features: list):
+    output_dir = os.path.join(config.RESULTS_PATH, tokenizer_name, language_scope)
+    os.makedirs(output_dir, exist_ok=True)
+    output_file_path = os.path.join(output_dir, f"{model_type}_results.txt")
+
+    feature_files = [os.path.join(config.FEATURES_PATH, f"features_{fname}") for fname in config.FILE_NAMES]
+    all_chunks = [pd.read_parquet(f) for f in feature_files]
+    df = pd.concat(all_chunks, ignore_index=True)
+    
+    if language_scope == 'english':
+        df = df[df[config.LANGUAGE_COLUMN] == 'English'].copy()
+
+    df = df.dropna(subset=[target_column] + selected_features)
+    X = df[selected_features]
+    y = df[target_column]
+
+    model_map = {
+        'mlp': (MLPRegressor(random_state=42, max_iter=500, early_stopping=True), config.MLP_PARAM_GRID),
+        'rf': (RandomForestRegressor(random_state=42), config.RF_PARAM_GRID),
+        'et': (ExtraTreesRegressor(random_state=42), config.ET_PARAM_GRID)
+    }
+    model, param_grid = model_map[model_type]
+    
+    pipeline = Pipeline([('scaler', StandardScaler()), ('model', model)])
+    grid_search = GridSearchCV(pipeline, param_grid, cv=5, scoring='r2', n_jobs=-1, verbose=1)
+    
+    grid_search.fit(X, y)
+
+    best_model_pipeline = grid_search.best_estimator_
+    cv = KFold(n_splits=config.CV_FOLDS, shuffle=True, random_state=42)
+    scoring_metrics = ['r2', 'neg_mean_absolute_error', 'neg_mean_squared_error']
+    scores = cross_validate(best_model_pipeline, X, y, cv=cv, scoring=scoring_metrics, n_jobs=-1)
+    
+    avg_r2 = np.mean(scores['test_r2'])
+    avg_mae = -np.mean(scores['test_neg_mean_absolute_error'])
+    avg_mse = -np.mean(scores['test_neg_mean_squared_error'])
+
+    with open(output_file_path, 'w', encoding='utf-8') as f:
+        f.write(f"results for model '{model_type.upper()}' for tokenizer '{tokenizer_name}' and scope '{language_scope}'\n")
+        f.write("-"*60 +"\n")
+        f.write("features used in the model\n")
+        f.write(", ".join(selected_features) + "\n")
+        f.write("hyperparameter search results (GridSearchCV)\n")
+        f.write(f"best found parameters:\n{grid_search.best_params_}\n")
+        f.write(f"best R2 score during search: {grid_search.best_score_:.6f}\n")
+        f.write(f"final evaluation of the best model with {config.CV_FOLDS}-Fold Cross-Validation\n")
+        f.write(f"Average R2: {avg_r2:.6f}\n")
+        f.write(f"Average MAE: {avg_mae:.4f}\n")
+        f.write(f"Average MSE: {avg_mse:.4f}\n")

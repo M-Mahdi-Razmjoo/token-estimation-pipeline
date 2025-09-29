@@ -1,0 +1,38 @@
+#!/bin/bash
+
+set -e
+SCRIPT_DIR="./scripts"
+
+echo "step 1: building feature files"
+"$SCRIPT_DIR/build_features.bash"
+echo
+
+echo "step 2: training linear models"
+for script in "$SCRIPT_DIR"/linear_models/*.bash; do
+    echo "running: $script"
+    "$script"
+done
+echo
+
+echo "step 3: training mlp models"
+for script in "$SCRIPT_DIR"/mlp_models/*.bash; do
+    echo "running: $script"
+    "$script"
+done
+echo
+
+echo "step 4: training random forest models"
+for script in "$SCRIPT_DIR"/rf_models/*.bash; do
+    echo "running: $script"
+    "$script"
+done
+echo
+
+echo "step 5: training extra trees models"
+for script in "$SCRIPT_DIR"/et_models/*.bash; do
+    echo "running: $script"
+    "$script"
+done
+echo
+
+echo "pipeline completed successfully."
