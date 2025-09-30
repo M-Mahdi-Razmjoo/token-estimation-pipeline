@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-SCRIPT_DIR="./scripts"
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 echo "step 1: building feature files"
 "$SCRIPT_DIR/build_features.bash"

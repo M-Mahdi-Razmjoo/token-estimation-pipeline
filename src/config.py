@@ -1,6 +1,6 @@
 import os
 
-BASE_PATH = ""    #specify the base path where the parquet files are located
+BASE_PATH = "data"    #specify the base path where the parquet files are located
 FEATURES_PATH = "features"
 RESULTS_PATH = "results"
 
