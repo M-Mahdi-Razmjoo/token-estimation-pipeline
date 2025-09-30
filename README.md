@@ -32,9 +32,9 @@ This command executes all steps sequentially.
 ```
 
 #### Run a specific step:
-You can also run individual steps. For example, to only run the MLP models:
+You can also run individual steps. For example, to only run the MLP model for the `r50k` tokenizer on `all` data scopes:
 ```bash
-./scripts/03_run_mlp_models.bash
+./scripts/mlp_models/r50k_all.bash
 ```
 
 ### 6. Outputs
