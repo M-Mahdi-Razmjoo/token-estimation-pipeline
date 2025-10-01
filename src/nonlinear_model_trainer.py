@@ -17,6 +17,8 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
     all_chunks = [pd.read_parquet(f) for f in feature_files]
     df = pd.concat(all_chunks, ignore_index=True)
     
+    df = df.sample(n=5000, random_state=42).copy()
+    
     if language_scope == 'english':
         df = df[df[config.LANGUAGE_COLUMN] == 'English'].copy()
 
@@ -25,14 +27,14 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
     y = df[target_column]
 
     model_map = {
-        'mlp': (MLPRegressor(random_state=42, max_iter=500, early_stopping=True), config.MLP_PARAM_GRID),
-        'rf': (RandomForestRegressor(random_state=42), config.RF_PARAM_GRID),
-        'et': (ExtraTreesRegressor(random_state=42), config.ET_PARAM_GRID)
+        'mlp': (MLPRegressor(random_state=42, max_iter=500, early_stopping=True, verbose=True), config.MLP_PARAM_GRID),
+        'rf': (RandomForestRegressor(random_state=42, verbose=1), config.RF_PARAM_GRID),
+        'et': (ExtraTreesRegressor(random_state=42, verbose=1), config.ET_PARAM_GRID)
     }
     model, param_grid = model_map[model_type]
     
     pipeline = Pipeline([('scaler', StandardScaler()), ('model', model)])
-    grid_search = GridSearchCV(pipeline, param_grid, cv=5, scoring='r2', n_jobs=-1, verbose=1)
+    grid_search = GridSearchCV(pipeline, param_grid, cv=5, scoring='r2', n_jobs=-1, verbose=2)
     
     grid_search.fit(X, y)
 
@@ -57,3 +59,4 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
         f.write(f"Average R2: {avg_r2:.6f}\n")
         f.write(f"Average MAE: {avg_mae:.4f}\n")
         f.write(f"Average MSE: {avg_mse:.4f}\n")
+    print(f"final results report for {model_type.upper()} saved successfully to {output_file_path}")
