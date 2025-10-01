@@ -17,8 +17,6 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
     all_chunks = [pd.read_parquet(f) for f in feature_files]
     df = pd.concat(all_chunks, ignore_index=True)
     
-    df = df.sample(n=5000, random_state=42).copy()
-    
     if language_scope == 'english':
         df = df[df[config.LANGUAGE_COLUMN] == 'English'].copy()
 
