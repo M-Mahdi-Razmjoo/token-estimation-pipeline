@@ -13,7 +13,7 @@ def train_linear_model_pipeline(target_column: str, language_scope: str, tokeniz
     output_dir = os.path.join(config.RESULTS_PATH, tokenizer_name, language_scope)
     os.makedirs(output_dir, exist_ok=True)
     output_file_path = os.path.join(output_dir, "linear_results.txt")
-    loader = DataLoader(config.INPUT_FILES)
+    loader = DataLoader(config.FILTERED_INPUT_FILES)
     columns_to_load = [config.CONTENT_COLUMN, config.LANGUAGE_COLUMN, target_column]
     all_chunks = [chunk for chunk in loader.load_data_chunks(columns=columns_to_load)]
     full_df = pd.concat(all_chunks, ignore_index=True).dropna(subset=[target_column])
@@ -61,6 +61,6 @@ def train_linear_model_pipeline(target_column: str, language_scope: str, tokeniz
         f.write(f"Average R2: {avg_r2:.6f}\n")
         f.write(f"Average MAE: {avg_mae:.4f}\n")
         f.write(f"Average MSE: {avg_mse:.4f}\n")
-        f.write("Final model parameters (y = a * char_count + b)\n")
-        f.write(f"Coefficient a: {final_a:.12f}\n")
-        f.write(f"Intercept b: {final_b:.12f}\n")
+        f.write("final model parameters (y = a * char_count + b)\n")
+        f.write(f"coefficient a: {final_a:.12f}\n")
+        f.write(f"intercept b: {final_b:.12f}\n")

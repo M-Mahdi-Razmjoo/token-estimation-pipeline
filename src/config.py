@@ -1,11 +1,13 @@
 import os
 
 BASE_PATH = "data"    #specify the base path where the parquet files are located
+FILTERED_PATH = "data_filtered"
 FEATURES_PATH = "features"
 RESULTS_PATH = "results"
 
 FILE_NAMES = [f"merged_{i}.parquet" for i in range(1, 11)]
 INPUT_FILES = [os.path.join(BASE_PATH, fname) for fname in FILE_NAMES]
+FILTERED_INPUT_FILES = [os.path.join(FILTERED_PATH, f"filtered_{fname}") for fname in FILE_NAMES]
 
 CONTENT_COLUMN = 'content'
 LANGUAGE_COLUMN = 'language'
