@@ -7,6 +7,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.neural_network import MLPRegressor
 from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 import config
+from utils import get_environment_info
 
 def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenizer_name: str, language_scope: str, selected_features: list):
     output_dir = os.path.join(config.RESULTS_PATH, tokenizer_name, language_scope)
@@ -57,6 +58,7 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
     avg_mse = -np.mean(scores['test_neg_mean_squared_error'])
 
     with open(output_file_path, 'w', encoding='utf-8') as f:
+        f.write(get_environment_info())
         f.write(f"results for model '{model_type.upper()}' for tokenizer '{tokenizer_name}' and scope '{language_scope}'\n")
         f.write("-"*60)
         f.write("features used in the model\n")

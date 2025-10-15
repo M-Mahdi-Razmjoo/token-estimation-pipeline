@@ -8,6 +8,7 @@ from sklearn.compose import TransformedTargetRegressor
 from sklearn.pipeline import Pipeline
 import config
 from data_loader import DataLoader
+from utils import get_environment_info
 
 def train_linear_model_pipeline(target_column: str, language_scope: str, tokenizer_name: str):
     output_dir = os.path.join(config.RESULTS_PATH, tokenizer_name, language_scope)
@@ -55,6 +56,7 @@ def train_linear_model_pipeline(target_column: str, language_scope: str, tokeniz
     final_b = y_mean - final_a * x_mean + (scaled_b * y_std)
     
     with open(output_file_path, 'w', encoding='utf-8') as f:
+        f.write(get_environment_info())
         f.write(f"linear model results for tokenizer '{tokenizer_name}' and scope '{language_scope}'\n")
         f.write("-"*60 +"\n")
         f.write(f"{config.CV_FOLDS}-Fold Cross-Validation results\n")
