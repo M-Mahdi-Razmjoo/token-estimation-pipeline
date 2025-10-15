@@ -32,14 +32,31 @@ This command executes all steps sequentially.
 ```
 
 #### Run a specific step:
-You can also run individual steps. For example, to only run the MLP model for the `r50k` tokenizer on `all` data scopes:
+First, run the data preprocessing step (if not already done):
+
+This creates the cleaned data in the `data_filtered/` directory.
+```bash
+./scripts/preprocess_data.bash
+```
+
+Next, build the features:
+
+This uses the cleaned data to create feature files in the `features/` directory.
+```bash
+./scripts/build_features.bash
+```
+
+Finally, you can run the specific model training script:
 ```bash
 ./scripts/mlp_models/r50k_all.bash
 ```
 
-### 6. Outputs
-Features are saved in the `features/` directory.
 
-Model reports are saved in the `results/` directory.
+### 6. Outputs
+`data_filtered/`: Contains the cleaned data after the preprocessing step.
+
+`features/`: Contains data enriched with engineered features, ready for model training.
+
+`results/`: Contains the final model performance reports and training logs.
 
 
