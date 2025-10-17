@@ -3,6 +3,7 @@ import pyarrow.parquet as pq
 from tqdm import tqdm
 import numpy as np
 import os
+import config
 
 class DataLoader:
     def __init__(self, file_paths: list):
@@ -57,7 +58,7 @@ class DataLoader:
             self._calculate_iqr_bounds(iqr_multiplier, language, target_column)
         lower_bound, upper_bound = self.bounds[bounds_key]
 
-        columns_to_load = list(set(["content", target_column, "language"]))
+        columns_to_load = [config.CONTENT_COLUMN, config.LANGUAGE_COLUMN] + list(config.TOKENIZER_COLUMNS.values())
 
         for chunk in self.load_data_chunks(columns=columns_to_load):
             target_chunk = chunk
