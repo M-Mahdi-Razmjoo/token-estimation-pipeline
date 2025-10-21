@@ -50,6 +50,7 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
     grid_search.fit(X, y)
 
     best_model_pipeline = grid_search.best_estimator_
+    cv = KFold(n_splits=config.CV_FOLDS, shuffle=True, random_state=42)
     final_scoring_metrics = ['r2', 'neg_mean_absolute_error', 'neg_mean_squared_error']
     scores = cross_validate(best_model_pipeline, X, y, cv=cv, scoring=final_scoring_metrics, n_jobs=-1)
 
