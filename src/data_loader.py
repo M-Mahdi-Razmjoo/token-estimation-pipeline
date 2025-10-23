@@ -1,3 +1,5 @@
+# In src/data_loader.py
+
 import pandas as pd
 import pyarrow.parquet as pq
 from tqdm import tqdm
@@ -5,80 +7,26 @@ import numpy as np
 import os
 import config
 
+def get_filtered_indices(df: pd.DataFrame, indices_to_consider, target_column: str, iqr_multiplier: float = 1.5):
+    if len(indices_to_consider) == 0:
+        return np.array([])
+    subset_df = df.loc[indices_to_consider]
+    word_counts = subset_df[config.CONTENT_COLUMN].astype(str).str.count(r'\s+') + 1
+    valid_mask = word_counts > 0
+    if not valid_mask.any():
+        return np.array([])
+    ratios = subset_df.loc[valid_mask, target_column] / word_counts[valid_mask]
+    Q1 = ratios.quantile(0.25)
+    Q3 = ratios.quantile(0.75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - (iqr_multiplier * IQR)
+    upper_bound = Q3 + (iqr_multiplier * IQR)
+    final_mask = ratios.between(lower_bound, upper_bound)
+    return subset_df.index[valid_mask][final_mask]
+
 class DataLoader:
     def __init__(self, file_paths: list):
         self.file_paths = file_paths
-        self.bounds = {}
-
-    def _calculate_iqr_bounds(self, iqr_multiplier: float, language: str = 'all', target_column: str = 'tiktoken_r50k_base_len'):
-        bounds_key = (language, iqr_multiplier, target_column)
-        if bounds_key in self.bounds:
-            return
-        
-        all_ratios = []
-        for file_path in self.file_paths:
-            parquet_file = pq.ParquetFile(file_path)
-            desc = os.path.basename(file_path)
-            
-            columns_to_load = ["content", target_column]
-            if language != 'all':
-                columns_to_load.append("language")
-
-            for batch in tqdm(parquet_file.iter_batches(batch_size=8192, columns=columns_to_load), desc=f"calculating ratios for '{language}' on {desc}"):
-                chunk = batch.to_pandas()
-                
-                target_chunk = chunk
-                if language != 'all':
-                    target_chunk = chunk[chunk['language'] == language]
-
-                if target_chunk.empty: continue
-                target_chunk = target_chunk.reset_index(drop=True)
-
-                word_counts = target_chunk['content'].astype(str).str.split().str.len()
-                valid_mask = word_counts > 0
-                if valid_mask.any():
-                    ratios = target_chunk.loc[valid_mask, target_column] / word_counts[valid_mask]
-                    all_ratios.extend(ratios.dropna().tolist())
-        
-        if not all_ratios:
-            self.bounds[bounds_key] = (-np.inf, np.inf)
-            return
-
-        ratios_series = pd.Series(all_ratios)
-        Q1 = ratios_series.quantile(0.25)
-        Q3 = ratios_series.quantile(0.75)
-        IQR = Q3 - Q1
-        lower_bound = Q1 - (iqr_multiplier * IQR)
-        upper_bound = Q3 + (iqr_multiplier * IQR)
-        self.bounds[bounds_key] = (lower_bound, upper_bound)
-
-    def load_preprocessed_data(self, iqr_multiplier: float = 1.5, language: str = 'all', target_column: str = 'tiktoken_r50k_base_len'):
-        bounds_key = (language, iqr_multiplier, target_column)
-        if bounds_key not in self.bounds:
-            self._calculate_iqr_bounds(iqr_multiplier, language, target_column)
-        lower_bound, upper_bound = self.bounds[bounds_key]
-
-        columns_to_load = [config.CONTENT_COLUMN, config.LANGUAGE_COLUMN] + list(config.TOKENIZER_COLUMNS.values())
-
-        for chunk in self.load_data_chunks(columns=columns_to_load):
-            target_chunk = chunk
-            if language != 'all':
-                target_chunk = chunk[chunk['language'] == language].copy()
-
-            if target_chunk.empty:
-                yield target_chunk
-                continue
-            
-            target_chunk = target_chunk.reset_index(drop=True)
-            word_counts = target_chunk['content'].astype(str).str.split().str.len()
-            
-            ratios = pd.Series(index=target_chunk.index, dtype=float)
-            valid_mask = word_counts > 0
-            if valid_mask.any():
-                ratios.loc[valid_mask] = target_chunk.loc[valid_mask, target_column] / word_counts[valid_mask]
-            
-            mask = ratios.between(lower_bound, upper_bound)
-            yield target_chunk[mask]
 
     def load_data_chunks(self, columns: list = None, chunk_size: int = 8192):
         for file_path in self.file_paths:
