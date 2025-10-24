@@ -25,7 +25,7 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
         df = df[df[config.LANGUAGE_COLUMN] == 'English'].copy()
 
     df = df.dropna(subset=[target_column] + selected_features)
-    
+    df = df.reset_index(drop=True)
     X_full = df[selected_features]
     y_full = df[target_column]
 
@@ -35,10 +35,9 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
         'et': (ExtraTreesRegressor(random_state=42, verbose=1), config.ET_PARAM_GRID)
     }
     model_template, param_grid = model_map[model_type]
-    
     pipeline = Pipeline([('scaler', StandardScaler()), ('model', model_template)])
     
-    print("starting GridSearchCV")
+    print("finding best hyperparameters using GridSearchCV...")
     grid_search = GridSearchCV(pipeline, param_grid, cv=5, scoring='r2', n_jobs=-1, verbose=2)
     grid_search.fit(X_full, y_full)
     
@@ -47,21 +46,26 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
     cv = KFold(n_splits=config.CV_FOLDS, shuffle=True, random_state=42)
     r2_scores, mae_scores, mse_scores = [], [], []
 
-    print(f"\nstarting {config.CV_FOLDS}-Fold CV for final evaluation")
+    print(f"\nstarting {config.CV_FOLDS}-fold CV for final evaluation")
     for fold, (train_idx_initial, test_idx) in enumerate(cv.split(df)):
         print(f"  - processing Fold {fold+1}/{config.CV_FOLDS}")
         
         train_idx_filtered = get_filtered_indices(df, train_idx_initial, target_column)
+
         X_train = df.loc[train_idx_filtered, selected_features]
         y_train = df.loc[train_idx_filtered, target_column]
+        
         X_test = df.loc[test_idx, selected_features]
         y_test = df.loc[test_idx, target_column]
+
         model = clone(best_model_pipeline)
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
+
         r2_scores.append(r2_score(y_test, y_pred))
         mae_scores.append(mean_absolute_error(y_test, y_pred))
         mse_scores.append(mean_squared_error(y_test, y_pred))
+        
         del X_train, y_train, X_test, y_test
         gc.collect()
 
@@ -75,9 +79,21 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
         f.write("-" * 60 + "\n")
         f.write("features used in the model\n")
         f.write(", ".join(selected_features) + "\n\n")
-        f.write("hyperparameter search results (GridSearchCV on full data)\n")
         f.write(f"best found parameters:\n{grid_search.best_params_}\n")
         f.write(f"best R2 score during search: {grid_search.best_score_:.6f}\n\n")
+        f.write("full hyperparameter search results (sorted by best R2 score)\n")
+        f.write("-" * 60 + "\n")
+        cv_results_df = pd.DataFrame(grid_search.cv_results_)
+        relevant_columns = ['rank_test_score', 'mean_test_score', 'std_test_score', 'params']
+        sorted_results_df = cv_results_df[relevant_columns].sort_values(by='rank_test_score')
+        sorted_results_df = sorted_results_df.rename(columns={
+            'rank_test_score': 'Rank',
+            'mean_test_score': 'Mean R2',
+            'std_test_score': 'Std Dev R2',
+            'params': 'Parameters'
+        })
+        f.write(sorted_results_df.to_string(index=False))
+        f.write("\n\n")
         f.write(f"final evaluation of the best model with {config.CV_FOLDS}-Fold Cross-Validation\n")
         f.write(f"Average R2: {avg_r2:.17f}\n")
         f.write(f"Average MAE: {avg_mae:.17f}\n")

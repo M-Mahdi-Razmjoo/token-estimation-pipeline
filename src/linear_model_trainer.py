@@ -25,6 +25,7 @@ def train_linear_model_pipeline(target_column: str, language_scope: str, tokeniz
 
     if language_scope == 'english':
         full_df = full_df[full_df[config.LANGUAGE_COLUMN] == 'English'].copy()
+    full_df = full_df.reset_index(drop=True)
     
     full_df['char_count'] = full_df[config.CONTENT_COLUMN].astype(str).str.len()
     
@@ -39,20 +40,26 @@ def train_linear_model_pipeline(target_column: str, language_scope: str, tokeniz
     cv = KFold(n_splits=config.CV_FOLDS, shuffle=True, random_state=42)
     r2_scores, mae_scores, mse_scores = [], [], []
 
-    print(f"starting {config.CV_FOLDS}-fold CV")
+    print(f"starting {config.CV_FOLDS}-fold CV for linear model")
     for fold, (train_idx_initial, test_idx) in enumerate(cv.split(full_df)):
         print(f"  - processing fold {fold+1}/{config.CV_FOLDS}")
+        
         train_idx_filtered = get_filtered_indices(full_df, train_idx_initial, target_column)
+
         X_train = full_df.loc[train_idx_filtered, ['char_count']]
         y_train = full_df.loc[train_idx_filtered, target_column]
+        
         X_test = full_df.loc[test_idx, ['char_count']]
         y_test = full_df.loc[test_idx, target_column]
+
         model = clone(pipeline_template)
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
+        
         r2_scores.append(r2_score(y_test, y_pred))
         mae_scores.append(mean_absolute_error(y_test, y_pred))
         mse_scores.append(mean_squared_error(y_test, y_pred))
+
         del X_train, y_train, X_test, y_test
         gc.collect()
 
