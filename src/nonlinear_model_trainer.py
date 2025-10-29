@@ -38,7 +38,21 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
     pipeline = Pipeline([('scaler', StandardScaler()), ('model', model_template)])
     
     print("finding best hyperparameters using GridSearchCV...")
-    grid_search = GridSearchCV(pipeline, param_grid, cv=5, scoring='r2', n_jobs=-1, verbose=2)
+    scoring_metrics_gridsearch = {
+        'r2': 'r2',
+        'mae': 'neg_mean_absolute_error',
+        'mse': 'neg_mean_squared_error'
+    }
+
+    grid_search = GridSearchCV(
+        pipeline,
+        param_grid,
+        cv=5,
+        scoring=scoring_metrics_gridsearch,
+        refit='r2',
+        n_jobs=-1,
+        verbose=2
+    )
     grid_search.fit(X_full, y_full)
     
     best_model_pipeline = grid_search.best_estimator_
@@ -72,6 +86,9 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
     avg_r2 = np.mean(r2_scores)
     avg_mae = np.mean(mae_scores)
     avg_mse = np.mean(mse_scores)
+    std_r2 = np.std(r2_scores)
+    std_mae = np.std(mae_scores)
+    std_mse = np.std(mse_scores)
 
     with open(output_file_path, 'w', encoding='utf-8') as f:
         f.write(get_environment_info())
@@ -84,19 +101,30 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
         f.write("full hyperparameter search results (sorted by best R2 score)\n")
         f.write("-" * 60 + "\n")
         cv_results_df = pd.DataFrame(grid_search.cv_results_)
-        relevant_columns = ['rank_test_score', 'mean_test_score', 'std_test_score', 'params']
-        sorted_results_df = cv_results_df[relevant_columns].sort_values(by='rank_test_score')
+        cv_results_df['mean_test_mae'] = -cv_results_df['mean_test_mae']
+        cv_results_df['mean_test_mse'] = -cv_results_df['mean_test_mse']
+        relevant_columns = [
+            'rank_test_r2', 
+            'mean_test_r2', 
+            'mean_test_mae', 
+            'mean_test_mse', 
+            'params'
+        ]
+        sorted_results_df = cv_results_df[relevant_columns].sort_values(by='rank_test_r2')
         sorted_results_df = sorted_results_df.rename(columns={
-            'rank_test_score': 'Rank',
-            'mean_test_score': 'Mean R2',
-            'std_test_score': 'Std Dev R2',
+            'rank_test_r2': 'Rank',
+            'mean_test_r2': 'Mean R2',
+            'mean_test_mae': 'Mean MAE',
+            'mean_test_mse': 'Mean MSE',
             'params': 'Parameters'
         })
         f.write(sorted_results_df.to_string(index=False))
         f.write("\n\n")
         f.write(f"final evaluation of the best model with {config.CV_FOLDS}-Fold Cross-Validation\n")
-        f.write(f"Average R2: {avg_r2:.17f}\n")
-        f.write(f"Average MAE: {avg_mae:.17f}\n")
-        f.write(f"Average MSE: {avg_mse:.17f}\n")
+        for i in range(len(r2_scores)):
+                f.write(f"  Fold {i+1:02d}: R2={r2_scores[i]:.17f}, MAE={mae_scores[i]:.17f}, MSE={mse_scores[i]:.17f}\n")
+        f.write(f"Average R2:  {avg_r2:.17f} (std: {std_r2:.17f})\n")
+        f.write(f"Average MAE: {avg_mae:.17f} (std: {std_mae:.17f})\n")
+        f.write(f"Average MSE: {avg_mse:.17f} (std: {std_mse:.17f})\n")
 
     print(f"final results report for {model_type.upper()} saved successfully to {output_file_path}")

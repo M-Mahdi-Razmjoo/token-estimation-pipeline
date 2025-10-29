@@ -66,6 +66,9 @@ def train_linear_model_pipeline(target_column: str, language_scope: str, tokeniz
     avg_r2 = np.mean(r2_scores)
     avg_mae = np.mean(mae_scores)
     avg_mse = np.mean(mse_scores)
+    std_r2 = np.std(r2_scores)
+    std_mae = np.std(mae_scores)
+    std_mse = np.std(mse_scores)
 
     final_train_indices = get_filtered_indices(full_df, full_df.index, target_column)
     X_final_train = full_df.loc[final_train_indices, ['char_count']]
@@ -92,9 +95,11 @@ def train_linear_model_pipeline(target_column: str, language_scope: str, tokeniz
         f.write(f"linear model results for tokenizer '{tokenizer_name}' and scope '{language_scope}'\n")
         f.write("-"*60 +"\n")
         f.write(f"{config.CV_FOLDS}-fold cross-validation results\n")
-        f.write(f"Average R2: {avg_r2:.17f}\n")
-        f.write(f"Average MAE: {avg_mae:.17f}\n")
-        f.write(f"Average MSE: {avg_mse:.17f}\n\n")
+        for i in range(len(r2_scores)):
+                f.write(f"  Fold {i+1:02d}: R2={r2_scores[i]:.17f}, MAE={mae_scores[i]:.17f}, MSE={mse_scores[i]:.17f}\n")
+        f.write(f"Average R2:  {avg_r2:.17f} (std: {std_r2:.17f})\n")
+        f.write(f"Average MAE: {avg_mae:.17f} (std: {std_mae:.17f})\n")
+        f.write(f"Average MSE: {avg_mse:.17f} (std: {std_mse:.17f})\n\n")
         f.write("------------------------------------------------------------\n")
         f.write(f"  Coefficient (a): {final_a:.17f}\n")
         f.write(f"  Intercept (b): {final_b:.17f}\n\n")
