@@ -6,11 +6,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.neural_network import MLPRegressor
 from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
-from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
-from sklearn.base import clone
-import gc
 import config
-from data_loader import get_filtered_indices
 from utils import get_environment_info
 
 def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenizer_name: str, language_scope: str, selected_features: list):
@@ -26,6 +22,7 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
 
     df = df.dropna(subset=[target_column] + selected_features)
     df = df.reset_index(drop=True)
+    
     X_full = df[selected_features]
     y_full = df[target_column]
 
@@ -36,9 +33,8 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
     }
     model_template, param_grid = model_map[model_type]
     pipeline = Pipeline([('scaler', StandardScaler()), ('model', model_template)])
-    
-    print("finding best hyperparameters using GridSearchCV...")
-    scoring_metrics_gridsearch = {
+    cv_strategy = KFold(n_splits=config.CV_FOLDS, shuffle=True, random_state=42)
+    scoring_metrics = {
         'r2': 'r2',
         'mae': 'neg_mean_absolute_error',
         'mse': 'neg_mean_squared_error'
@@ -47,84 +43,56 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
     grid_search = GridSearchCV(
         pipeline,
         param_grid,
-        cv=5,
-        scoring=scoring_metrics_gridsearch,
+        cv=cv_strategy,
+        scoring=scoring_metrics,
         refit='r2',
         n_jobs=-1,
-        verbose=2
+        verbose=2,
+        return_train_score=False
     )
+    
     grid_search.fit(X_full, y_full)
     
-    best_model_pipeline = grid_search.best_estimator_
-    
-    cv = KFold(n_splits=config.CV_FOLDS, shuffle=True, random_state=42)
-    r2_scores, mae_scores, mse_scores = [], [], []
-
-    print(f"\nstarting {config.CV_FOLDS}-fold CV for final evaluation")
-    for fold, (train_idx_initial, test_idx) in enumerate(cv.split(df)):
-        print(f"  - processing Fold {fold+1}/{config.CV_FOLDS}")
-        
-        train_idx_filtered = get_filtered_indices(df, train_idx_initial, target_column)
-
-        X_train = df.loc[train_idx_filtered, selected_features]
-        y_train = df.loc[train_idx_filtered, target_column]
-        
-        X_test = df.loc[test_idx, selected_features]
-        y_test = df.loc[test_idx, target_column]
-
-        model = clone(best_model_pipeline)
-        model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
-
-        r2_scores.append(r2_score(y_test, y_pred))
-        mae_scores.append(mean_absolute_error(y_test, y_pred))
-        mse_scores.append(mean_squared_error(y_test, y_pred))
-        
-        del X_train, y_train, X_test, y_test
-        gc.collect()
-
-    avg_r2 = np.mean(r2_scores)
-    avg_mae = np.mean(mae_scores)
-    avg_mse = np.mean(mse_scores)
-    std_r2 = np.std(r2_scores)
-    std_mae = np.std(mae_scores)
-    std_mse = np.std(mse_scores)
-
     with open(output_file_path, 'w', encoding='utf-8') as f:
         f.write(get_environment_info())
         f.write(f"results for model '{model_type.upper()}' for tokenizer '{tokenizer_name}' and scope '{language_scope}'\n")
         f.write("-" * 60 + "\n")
         f.write("features used in the model\n")
         f.write(", ".join(selected_features) + "\n\n")
-        f.write(f"best found parameters:\n{grid_search.best_params_}\n")
-        f.write(f"best R2 score during search: {grid_search.best_score_:.6f}\n\n")
-        f.write("full hyperparameter search results (sorted by best R2 score)\n")
-        f.write("-" * 60 + "\n")
-        cv_results_df = pd.DataFrame(grid_search.cv_results_)
-        cv_results_df['mean_test_mae'] = -cv_results_df['mean_test_mae']
-        cv_results_df['mean_test_mse'] = -cv_results_df['mean_test_mse']
-        relevant_columns = [
-            'rank_test_r2', 
-            'mean_test_r2', 
-            'mean_test_mae', 
-            'mean_test_mse', 
-            'params'
-        ]
-        sorted_results_df = cv_results_df[relevant_columns].sort_values(by='rank_test_r2')
-        sorted_results_df = sorted_results_df.rename(columns={
-            'rank_test_r2': 'Rank',
-            'mean_test_r2': 'Mean R2',
-            'mean_test_mae': 'Mean MAE',
-            'mean_test_mse': 'Mean MSE',
-            'params': 'Parameters'
-        })
-        f.write(sorted_results_df.to_string(index=False))
-        f.write("\n\n")
-        f.write(f"final evaluation of the best model with {config.CV_FOLDS}-Fold Cross-Validation\n")
-        for i in range(len(r2_scores)):
-                f.write(f"  Fold {i+1:02d}: R2={r2_scores[i]:.17f}, MAE={mae_scores[i]:.17f}, MSE={mse_scores[i]:.17f}\n")
-        f.write(f"Average R2:  {avg_r2:.17f} (std: {std_r2:.17f})\n")
-        f.write(f"Average MAE: {avg_mae:.17f} (std: {std_mae:.17f})\n")
-        f.write(f"Average MSE: {avg_mse:.17f} (std: {std_mse:.17f})\n")
+
+        f.write(f"full GridSearchCV results ({config.CV_FOLDS}-Fold Cross-Validation on raw data)\n")
+        f.write("=" * 60 + "\n\n")
+        
+        results_df = pd.DataFrame(grid_search.cv_results_).sort_values(by='rank_test_r2')
+
+        for index, row in results_df.iterrows():
+            f.write(f"rank: {row['rank_test_r2']}\n")
+            f.write(f"  parameters: {row['params']}\n")
+            f.write("  ----------------------------------------\n")
+            
+            mean_r2 = row['mean_test_r2']
+            std_r2 = row['std_test_r2']
+            mean_mae = -row['mean_test_mae']
+            std_mae = row['std_test_mae']
+            mean_mse = -row['mean_test_mse']
+            std_mse = row['std_test_mse']
+            
+            f.write(f"    - R2:  {mean_r2:.6f} (std: {std_r2:.6f})\n")
+            f.write(f"    - MAE: {mean_mae:.4f} (std: {std_mae:.4f})\n")
+            f.write(f"    - MSE: {mean_mse:.4f} (std: {std_mse:.4f})\n")
+            f.write("\n  per fold :\n")
+            r2_folds = [row[f'split{i}_test_r2'] for i in range(config.CV_FOLDS)]
+            mae_folds = [-row[f'split{i}_test_mae'] for i in range(config.CV_FOLDS)]
+            mse_folds = [-row[f'split{i}_test_mse'] for i in range(config.CV_FOLDS)]
+            f.write("    fold |      R2      |     MAE      |      MSE\n")
+            f.write("    -----|--------------|--------------|--------------\n")
+            for i in range(config.CV_FOLDS):
+                f.write(f"    {i+1:02d}   |  {r2_folds[i]:.6f}  |  {mae_folds[i]:10.4f}  |  {mse_folds[i]:12.4f}\n")
+
+            f.write("\n" + "=" * 60 + "\n\n")
+
+        f.write("best model (based on Mean R2):\n")
+        f.write(f"  best parameters: {grid_search.best_params_}\n")
+        f.write(f"  best Mean R2: {grid_search.best_score_:.6f}\n")
 
     print(f"final results report for {model_type.upper()} saved successfully to {output_file_path}")
