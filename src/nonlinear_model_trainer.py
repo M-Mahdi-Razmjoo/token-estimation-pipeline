@@ -34,10 +34,15 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
     model_template, param_grid = model_map[model_type]
     pipeline = Pipeline([('scaler', StandardScaler()), ('model', model_template)])
     cv_strategy = KFold(n_splits=config.CV_FOLDS, shuffle=True, random_state=42)
+
     scoring_metrics = {
         'r2': 'r2',
         'mae': 'neg_mean_absolute_error',
-        'mse': 'neg_mean_squared_error'
+        'mse': 'neg_mean_squared_error',
+        'median_ae': 'neg_median_absolute_error',
+        'mape': 'neg_mean_absolute_percentage_error',
+        'max_error': 'neg_max_error',
+        'd2_abs': 'd2_absolute_error_score'
     }
 
     grid_search = GridSearchCV(
@@ -60,8 +65,9 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
         f.write("features used in the model\n")
         f.write(", ".join(selected_features) + "\n\n")
 
-        f.write(f"full GridSearchCV results ({config.CV_FOLDS}-Fold Cross-Validation on raw data)\n")
-        f.write("=" * 60 + "\n\n")
+        f.write(f"full GridSearchCV results ({config.CV_FOLDS}-Fold cross-validation on raw data)\n")
+        f.write("details for each hyperparameter combination, sorted by best mean R2 score\n")
+        f.write("=" * 80 + "\n\n")
         
         results_df = pd.DataFrame(grid_search.cv_results_).sort_values(by='rank_test_r2')
 
@@ -69,30 +75,40 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
             f.write(f"rank: {row['rank_test_r2']}\n")
             f.write(f"  parameters: {row['params']}\n")
             f.write("  ----------------------------------------\n")
-            
-            mean_r2 = row['mean_test_r2']
-            std_r2 = row['std_test_r2']
-            mean_mae = -row['mean_test_mae']
-            std_mae = row['std_test_mae']
-            mean_mse = -row['mean_test_mse']
-            std_mse = row['std_test_mse']
-            
-            f.write(f"    - R2:  {mean_r2:.6f} (std: {std_r2:.6f})\n")
-            f.write(f"    - MAE: {mean_mae:.4f} (std: {std_mae:.4f})\n")
-            f.write(f"    - MSE: {mean_mse:.4f} (std: {std_mse:.4f})\n")
-            f.write("\n  per fold :\n")
-            r2_folds = [row[f'split{i}_test_r2'] for i in range(config.CV_FOLDS)]
-            mae_folds = [-row[f'split{i}_test_mae'] for i in range(config.CV_FOLDS)]
-            mse_folds = [-row[f'split{i}_test_mse'] for i in range(config.CV_FOLDS)]
-            f.write("    fold |      R2      |     MAE      |      MSE\n")
-            f.write("    -----|--------------|--------------|--------------\n")
-            for i in range(config.CV_FOLDS):
-                f.write(f"    {i+1:02d}   |  {r2_folds[i]:.6f}  |  {mae_folds[i]:10.4f}  |  {mse_folds[i]:12.4f}\n")
+            f.write("  summary statistics:\n")
+            f.write(f"    - R2:               {row['mean_test_r2']:.17f} (std: {row['std_test_r2']:.17f})\n")
+            f.write(f"    - MAE:              {-row['mean_test_mae']:.17f} (std: {row['std_test_mae']:.17f})\n")
+            f.write(f"    - MSE:              {-row['mean_test_mse']:.17f} (std: {row['std_test_mse']:.17f})\n")
+            f.write(f"    - Median Abs Error: {-row['mean_test_median_ae']:.17f} (std: {row['std_test_median_ae']:.17f})\n")
+            f.write(f"    - MAPE:             {-row['mean_test_mape']:.17f} (std: {row['std_test_mape']:.17f})\n")
+            f.write(f"    - Max Error:        {-row['mean_test_max_error']:.17f} (std: {row['std_test_max_error']:.17f})\n")
+            f.write(f"    - D2 Abs Score:     {row['mean_test_d2_abs']:.17f} (std: {row['std_test_d2_abs']:.17f})\n")
 
-            f.write("\n" + "=" * 60 + "\n\n")
+            f.write("\n  Per-Fold Scores:\n")
+            fold_data = {
+                'Fold': [i + 1 for i in range(config.CV_FOLDS)],
+                'R2': [row[f'split{i}_test_r2'] for i in range(config.CV_FOLDS)],
+                'MAE': [-row[f'split{i}_test_mae'] for i in range(config.CV_FOLDS)],
+                'MSE': [-row[f'split{i}_test_mse'] for i in range(config.CV_FOLDS)],
+                'MedianAE': [-row[f'split{i}_test_median_ae'] for i in range(config.CV_FOLDS)],
+                'MAPE': [-row[f'split{i}_test_mape'] for i in range(config.CV_FOLDS)],
+                'MaxError': [-row[f'split{i}_test_max_error'] for i in range(config.CV_FOLDS)],
+                'D2Abs': [row[f'split{i}_test_d2_abs'] for i in range(config.CV_FOLDS)],
+            }
+            fold_df = pd.DataFrame(fold_data)
+            f.write(fold_df.to_string(index=False, formatters={
+                'R2': '{:,.17f}'.format,
+                'MAE': '{:,.17f}'.format,
+                'MSE': '{:,.17f}'.format,
+                'MedianAE': '{:,.17f}'.format,
+                'MAPE': '{:,.17f}'.format,
+                'MaxError': '{:,.17f}'.format,
+                'D2Abs': '{:,.17f}'.format,
+            }))
+            f.write("\n\n" + "=" * 80 + "\n\n")
 
-        f.write("best model (based on Mean R2):\n")
-        f.write(f"  best parameters: {grid_search.best_params_}\n")
-        f.write(f"  best Mean R2: {grid_search.best_score_:.6f}\n")
+        f.write("best model (based on mean R2):\n")
+        f.write(f"  Best Parameters: {grid_search.best_params_}\n")
+        f.write(f"  Best Mean R2 Score: {grid_search.best_score_:.17f}\n")
 
     print(f"final results report for {model_type.upper()} saved successfully to {output_file_path}")
