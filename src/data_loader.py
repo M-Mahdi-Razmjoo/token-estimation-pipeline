@@ -1,5 +1,3 @@
-# In src/data_loader.py
-
 import pandas as pd
 import pyarrow.parquet as pq
 from tqdm import tqdm
