@@ -53,7 +53,7 @@ Finally, you can run the specific model training script:
 
 
 ### 6. Outputs
-`data_filtered/`: Contains the cleaned data after the preprocessing step.
+'data_enriched/': Contains the original data enriched with new tokenizer columns. This is the new source for all subsequent steps.
 
 `features/`: Contains data enriched with engineered features, ready for model training.
 
