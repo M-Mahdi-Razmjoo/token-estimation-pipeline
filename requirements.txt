@@ -12,3 +12,10 @@ six==1.17.0
 threadpoolctl==3.6.0
 tqdm==4.67.1
 tzdata==2025.2
+transformers==4.43.3
+torch==2.5.1
+sentencepiece==0.2.0
+huggingface-hub>=0.23.2
+safetensors>=0.4.1
+tokenizers>=0.19.0
+
