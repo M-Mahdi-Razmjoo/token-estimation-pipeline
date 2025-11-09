@@ -26,7 +26,7 @@ def train_linear_model_pipeline(target_column: str, language_scope: str, tokeniz
     os.makedirs(output_dir, exist_ok=True)
     output_file_path = os.path.join(output_dir, "linear_results.txt")
 
-    loader = DataLoader(config.INPUT_FILES)
+    loader = DataLoader(config.ENRICHED_INPUT_FILES)
     columns_to_load = [config.CONTENT_COLUMN, config.LANGUAGE_COLUMN] + list(config.TOKENIZER_COLUMNS.values())
     all_chunks = [chunk for chunk in loader.load_data_chunks(columns=columns_to_load)]
     full_df = pd.concat(all_chunks, ignore_index=True).dropna(subset=[target_column])

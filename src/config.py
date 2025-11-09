@@ -1,18 +1,22 @@
 import os
 
 BASE_PATH = "data"    #specify the base path where the parquet files are located
+ENRICHED_PATH = "data_enriched"
 FEATURES_PATH = "features"
 RESULTS_PATH = "results"
 
 FILE_NAMES = [f"merged_{i}.parquet" for i in range(1, 11)]
 INPUT_FILES = [os.path.join(BASE_PATH, fname) for fname in FILE_NAMES]
+ENRICHED_INPUT_FILES = [os.path.join(ENRICHED_PATH, f"enriched_{fname}") for fname in FILE_NAMES]
 
 CONTENT_COLUMN = 'content'
 LANGUAGE_COLUMN = 'language'
 TOKENIZER_COLUMNS = {
     'r50k': 'tiktoken_r50k_base_len',
     'cl100k': 'tiktoken_cl100k_base_len',
-    'o200k': 'tiktoken_o200k_base_len'
+    'o200k': 'tiktoken_o200k_base_len',
+    'deepseek_r1': 'deepseek_r1',
+    'qwen_qwq': 'qwen_qwq'
 }
 
 LANGUAGE_SCOPES = ['all', 'english']

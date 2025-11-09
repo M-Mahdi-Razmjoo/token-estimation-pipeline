@@ -8,7 +8,7 @@ from feature_engineering import extract_all_features
 def main():
     os.makedirs(config.FEATURES_PATH, exist_ok=True)
     columns_to_load = [config.CONTENT_COLUMN, config.LANGUAGE_COLUMN] + list(config.TOKENIZER_COLUMNS.values())
-    for input_file in tqdm(config.INPUT_FILES, desc="processing input files"):
+    for input_file in tqdm(config.ENRICHED_INPUT_FILES, desc="processing input files"):
         base_filename = os.path.basename(input_file)
         output_filename = f"features_{base_filename}"
         output_path = os.path.join(config.FEATURES_PATH, output_filename)
