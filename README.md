@@ -34,7 +34,7 @@ This command executes all steps sequentially.
 #### Run a specific step:
 First, run the data preprocessing step (if not already done):
 
-This reads raw data from 'data/', adds new tokenizer columns ('deepseek_r1', 'qwen_qwq'), and saves the result in 'data_enriched/'.
+This reads raw data from `data/`, adds new tokenizer columns (`deepseek_r1`, `qwen_qwq`), and saves the result in `data_enriched/`.
 ```bash
 ./scripts/enrich_data.bash
 ```
@@ -53,7 +53,7 @@ Finally, you can run the specific model training script:
 
 
 ### 6. Outputs
-'data_enriched/': Contains the original data enriched with new tokenizer columns. This is the new source for all subsequent steps.
+`data_enriched/`: Contains the original data enriched with new tokenizer columns. This is the new source for all subsequent steps.
 
 `features/`: Contains data enriched with engineered features, ready for model training.
 
