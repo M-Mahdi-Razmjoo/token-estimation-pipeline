@@ -34,9 +34,9 @@ This command executes all steps sequentially.
 #### Run a specific step:
 First, run the data preprocessing step (if not already done):
 
-This creates the cleaned data in the `data_filtered/` directory.
+This reads raw data from `data/`, adds new tokenizer columns (`deepseek_r1`, `qwen_qwq`), and saves the result in `data_enriched/`.
 ```bash
-./scripts/preprocess_data.bash
+./scripts/enrich_data.bash
 ```
 
 Next, build the features:
@@ -48,12 +48,12 @@ This uses the cleaned data to create feature files in the `features/` directory.
 
 Finally, you can run the specific model training script:
 ```bash
-./scripts/mlp_models/r50k_all.bash
+./scripts/rf_models/qwen_qwq_all.bash
 ```
 
 
 ### 6. Outputs
-`data_filtered/`: Contains the cleaned data after the preprocessing step.
+`data_enriched/`: Contains the original data enriched with new tokenizer columns. This is the new source for all subsequent steps.
 
 `features/`: Contains data enriched with engineered features, ready for model training.
 
