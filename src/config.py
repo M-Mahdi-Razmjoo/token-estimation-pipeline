@@ -16,7 +16,8 @@ TOKENIZER_COLUMNS = {
     'cl100k': 'tiktoken_cl100k_base_len',
     'o200k': 'tiktoken_o200k_base_len',
     'deepseek_r1': 'deepseek_r1',
-    'qwen_qwq': 'qwen_qwq'
+    'qwen_qwq': 'qwen_qwq' ,
+    'llama3_1_8b': 'llama3_1_8b'
 }
 
 LANGUAGE_SCOPES = ['all', 'english']
