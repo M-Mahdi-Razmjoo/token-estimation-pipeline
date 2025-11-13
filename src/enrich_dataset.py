@@ -28,7 +28,7 @@ except Exception as e:
     print("the 'llama3_1_8b' column will be filled with 0.")
 
 def count_tokens_generic(text, tokenizer):
-    if not isinstance(text, str) or not text:
+    if tokenizer is None or not isinstance(text, str) or not text:
         return 0
     return len(tokenizer.encode(text, add_special_tokens=False))
 
