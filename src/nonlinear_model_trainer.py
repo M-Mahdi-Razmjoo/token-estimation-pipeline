@@ -14,7 +14,7 @@ def train_nonlinear_model_pipeline(target_column: str, model_type: str, tokenize
     os.makedirs(output_dir, exist_ok=True)
     output_file_path = os.path.join(output_dir, f"{model_type}_results.txt")
 
-    feature_files = [os.path.join(config.FEATURES_PATH, f"features_{fname}") for fname in config.FILE_NAMES]
+    feature_files = [os.path.join(config.FEATURES_PATH, f"features_{os.path.basename(fname)}") for fname in config.ENRICHED_INPUT_FILES]
     df = pd.concat([pd.read_parquet(f) for f in feature_files], ignore_index=True)
     
     if language_scope == 'english':
