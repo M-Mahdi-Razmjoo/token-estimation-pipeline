@@ -26,7 +26,7 @@ def train_linear_model_pipeline(target_column: str, language_scope: str, tokeniz
     os.makedirs(output_dir, exist_ok=True)
     output_file_path = os.path.join(output_dir, "linear_results.txt")
 
-    loader = DataLoader(config.ENRICHED_INPUT_FILES)
+    loader = DataLoader(config.INPUT_FILES)
     columns_to_load = [config.CONTENT_COLUMN, config.LANGUAGE_COLUMN] + list(config.TOKENIZER_COLUMNS.values())
     all_chunks = [chunk for chunk in loader.load_data_chunks(columns=columns_to_load)]
     full_df = pd.concat(all_chunks, ignore_index=True).dropna(subset=[target_column])
@@ -35,7 +35,7 @@ def train_linear_model_pipeline(target_column: str, language_scope: str, tokeniz
         full_df = full_df[full_df[config.LANGUAGE_COLUMN] == 'English'].copy()
     full_df = full_df.reset_index(drop=True)
     
-    full_df['char_count'] = full_df[config.CONTENT_COLUMN].astype(str).str.len()
+    full_df['word_count'] = full_df[config.CONTENT_COLUMN].astype(str).str.count(r'\s+') + 1
     
     pipeline_template = TransformedTargetRegressor(
         regressor=Pipeline([
@@ -54,10 +54,10 @@ def train_linear_model_pipeline(target_column: str, language_scope: str, tokeniz
     print(f"starting {config.CV_FOLDS}-Fold CV for linear model on raw data...")
     for fold, (train_idx, test_idx) in enumerate(cv.split(full_df)):
         print(f" processing Fold {fold+1}/{config.CV_FOLDS}")
-        X_train = full_df.loc[train_idx, ['char_count']]
+        X_train = full_df.loc[train_idx, ['word_count']]
         y_train = full_df.loc[train_idx, target_column]
         
-        X_test = full_df.loc[test_idx, ['char_count']]
+        X_test = full_df.loc[test_idx, ['word_count']]
         y_test = full_df.loc[test_idx, target_column]
 
         model = clone(pipeline_template)
@@ -77,7 +77,7 @@ def train_linear_model_pipeline(target_column: str, language_scope: str, tokeniz
     
     summary_stats = {key: (np.mean(value), np.std(value)) for key, value in scores.items()}
 
-    X_final_train = full_df[['char_count']]
+    X_final_train = full_df[['word_count']]
     y_final_train = full_df[target_column]
     
     final_model = clone(pipeline_template)
@@ -127,13 +127,13 @@ def train_linear_model_pipeline(target_column: str, language_scope: str, tokeniz
 
         f.write("final model parameters (trained on all raw data)\n")
         f.write("------------------------------------------------------------\n")
-        f.write("unscaled parameters (y = a * char_count + b):\n")
+        f.write("unscaled parameters (y = a * word_count + b):\n")
         f.write(f"  Coefficient (a): {final_a:.17f}\n")
         f.write(f"  Intercept (b): {final_b:.17f}\n\n")
 
         f.write("scaling & scaled parameters (for reproducibility):\n")
-        f.write(f"  Input Scaler (X=char_count) Mean:             {x_mean:.17f}\n")
-        f.write(f"  Input Scaler (X=char_count) Scale (Std Dev):  {x_std:.17f}\n")
+        f.write(f"  Input Scaler (X=word_count) Mean:             {x_mean:.17f}\n")
+        f.write(f"  Input Scaler (X=word_count) Scale (Std Dev):  {x_std:.17f}\n")
         f.write(f"  Output Scaler (y=target) Mean:            {y_mean:.17f}\n")
         f.write(f"  Output Scaler (y=target) Scale (Std Dev): {y_std:.17f}\n")
         f.write(f"  Model Coefficient on Scaled Data (scaled_a):  {scaled_a:.17f}\n")
