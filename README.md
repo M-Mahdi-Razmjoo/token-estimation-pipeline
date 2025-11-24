@@ -24,7 +24,7 @@ Make the run scripts executable
 chmod +x scripts/**/*.bash scripts/*.bash
 ```
 
-### 5. Run Pipeline
+### 5. Step 1: Model Evaluation & Analysis
 #### Run the entire pipeline:
 This command executes all steps sequentially.
 ```bash
@@ -51,12 +51,22 @@ Finally, you can run the specific model training script:
 ./scripts/rf_models/qwen_qwq_all.bash
 ```
 
+### 6. Step 2: Final Model Training & Export
+#### Run the Full Final Training Pipeline
+This command trains and saves all final models sequentially based on the parameters in `final_config.py`.
 
-### 6. Outputs
+```bash
+./scripts/run_all_final.bash
+```
+
+
+### 7. Outputs
 `data_enriched/`: Contains the original data enriched with new tokenizer columns. This is the new source for all subsequent steps.
 
 `features/`: Contains data enriched with engineered features, ready for model training.
 
 `results/`: Contains the final model performance reports and training logs.
+
+`final_models/`: Contains the final and their corresponding training logs.
 
 
