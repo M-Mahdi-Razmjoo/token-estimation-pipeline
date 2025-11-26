@@ -35,12 +35,10 @@ def main():
     is_linear = args.model_type == 'linear'
 
     if is_linear:
-        print("Linear model selected. Loading data from ENRICHED files ('data_enriched/')...")
         loader = DataLoader(config.ENRICHED_INPUT_FILES)
         columns_to_load = [config.CONTENT_COLUMN, config.LANGUAGE_COLUMN] + list(config.TOKENIZER_COLUMNS.values())
         df = pd.concat(loader.load_data_chunks(columns=columns_to_load), ignore_index=True)
     else:
-        print("Non-linear model selected. Loading data from FEATURE files ('features/')...")
         feature_files = [
             os.path.join(config.FEATURES_PATH, f"features_{os.path.basename(fname)}") 
             for fname in config.ENRICHED_INPUT_FILES
@@ -51,8 +49,6 @@ def main():
         df = df[df[config.LANGUAGE_COLUMN] == 'English'].copy()
     df = df.dropna(subset=[target_column])
     df = df.reset_index(drop=True)
-
-    print(f"Loaded {len(df)} rows for final training.")
 
     try:
         best_params = BEST_HYPERPARAMS[args.model_type][args.tokenizer][args.scope]
