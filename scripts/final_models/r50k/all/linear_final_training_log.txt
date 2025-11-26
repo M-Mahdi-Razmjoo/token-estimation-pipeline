@@ -1,1 +1,0 @@
-C:\Users\ALPHA\AppData\Local\Programs\Python\Python312\python.exe: can't open file 'F:\\OpenSciLabScripts\\scripts\\src\\train_final_model.py': [Errno 2] No such file or directory
