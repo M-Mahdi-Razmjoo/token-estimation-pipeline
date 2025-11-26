@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-PROJECT_ROOT=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/../.." &> /dev/null && pwd )
+PROJECT_ROOT=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/../../.." &> /dev/null && pwd )
 cd "$PROJECT_ROOT"
 TOKENIZER="r50k"
 SCOPE="english"

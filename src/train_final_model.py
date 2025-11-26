@@ -1,3 +1,5 @@
+# In src/train_final_model.py
+
 import os
 import argparse
 import pandas as pd
@@ -8,32 +10,43 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 from sklearn.compose import TransformedTargetRegressor
 import pickle
+import json
+
 try:
-    from pymilo.pymilo_obj import Pymilo
+    from pymilo import Export, Import
     PYMILO_AVAILABLE = True
+    print("Pymilo library (v1.x) found. An export will be attempted.")
 except ImportError:
     PYMILO_AVAILABLE = False
-    print("Pymilo library not found. falling back to standard pickle for model serialization.")
+    print("Warning: Pymilo library not found. The Pymilo export step will be skipped.")
+
 import config
 from data_loader import DataLoader
 from final_config import BEST_HYPERPARAMS
 
 def main():
-    parser = argparse.ArgumentParser(description="train and save a final model with the best hyperparameters.")
+    # --- START: CRITICAL BUG FIX (RE-ADD ARGPARSE) ---
+    # This block was accidentally removed in a previous version.
+    # It is responsible for parsing command-line arguments and defining the 'args' object.
+    parser = argparse.ArgumentParser(description="Train and save a final model with the best hyperparameters.")
     parser.add_argument('--tokenizer', required=True, choices=config.TOKENIZER_COLUMNS.keys())
     parser.add_argument('--model-type', required=True, choices=['linear', 'mlp', 'rf', 'et'])
     parser.add_argument('--scope', required=True, choices=config.LANGUAGE_SCOPES)
     args = parser.parse_args()
-    print(f"training final model")
+    # --- END: CRITICAL BUG FIX ---
+
+    print(f"--- Training Final Model ---")
     print(f"Model Type: {args.model_type.upper()}, Tokenizer: {args.tokenizer}, Scope: {args.scope}")
     target_column = config.TOKENIZER_COLUMNS[args.tokenizer]
     is_linear = args.model_type == 'linear'
 
     if is_linear:
+        print("Linear model selected. Loading data from ENRICHED files ('data_enriched/')...")
         loader = DataLoader(config.ENRICHED_INPUT_FILES)
         columns_to_load = [config.CONTENT_COLUMN, config.LANGUAGE_COLUMN] + list(config.TOKENIZER_COLUMNS.values())
         df = pd.concat(loader.load_data_chunks(columns=columns_to_load), ignore_index=True)
     else:
+        print("Non-linear model selected. Loading data from FEATURE files ('features/')...")
         feature_files = [
             os.path.join(config.FEATURES_PATH, f"features_{os.path.basename(fname)}") 
             for fname in config.ENRICHED_INPUT_FILES
@@ -45,11 +58,13 @@ def main():
     df = df.dropna(subset=[target_column])
     df = df.reset_index(drop=True)
 
+    print(f"Loaded {len(df)} rows for final training.")
+
     try:
         best_params = BEST_HYPERPARAMS[args.model_type][args.tokenizer][args.scope]
-        print(f"using hyperparameters: {best_params}")
+        print(f"Using best hyperparameters: {best_params}")
     except KeyError:
-        print(f"hyperparameters not found in final_config.py for {args.model_type}/{args.tokenizer}/{args.scope}")
+        print(f"ERROR: Best hyperparameters not found in final_config.py for {args.model_type}/{args.tokenizer}/{args.scope}")
         exit(1)
 
     if is_linear:
@@ -83,37 +98,35 @@ def main():
             ('model', model_template)
         ])
 
+    print("\nTraining final model on the entire dataset...")
     final_model_pipeline.fit(X, y)
-    print("training complete.")
+    print("Training complete.")
 
     output_dir = os.path.join("final_models", args.tokenizer, args.scope)
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"{args.model_type}_model.pkl")
+    
+    base_name = f"{args.model_type}_model"
+    pymilo_path = os.path.join(output_dir, f"{base_name}.pymilo.json")
+    pickle_path = os.path.join(output_dir, f"{base_name}.pickle.pkl")
+
     if PYMILO_AVAILABLE:
         try:
-            print(f"attempting to export model using Pymilo to: {output_path}")
-            pymilo_exporter = Pymilo(final_model_pipeline)
-            pymilo_exporter.export(output_path)
-            print("Pymilo export successful")
+            print(f"\nAttempting to export model using Pymilo to: {pymilo_path}")
+            exporter = Export(final_model_pipeline)
+            exporter.save(pymilo_path)
+            print("[SUCCESS] Pymilo export successful!")
         except Exception as e:
-            print(f"pymilo export failed. error: {e}")
-            print("falling back to standard pickle serialization.")
-            try:
-                with open(output_path, 'wb') as f:
-                    pickle.dump(final_model_pipeline, f)
-                print(f"standard pickle export successful to: {output_path}")
-            except Exception as pickle_e:
-                print(f"standard pickle export also failed. error: {pickle_e}")
-                print("model could not be saved.")
+            print(f"[WARNING] Pymilo export failed. Error: {e}")
     else:
-        try:
-            print(f"exporting model using standard pickle to: {output_path}")
-            with open(output_path, 'wb') as f:
-                pickle.dump(final_model_pipeline, f)
-            print("standard pickle export successful")
-        except Exception as pickle_e:
-            print(f"standard pickle export failed. error: {pickle_e}")
-            print("model could not be saved.")
+        print("\nSkipping Pymilo export: library not available.")
+
+    try:
+        print(f"\nAttempting to export model using standard pickle to: {pickle_path}")
+        with open(pickle_path, 'wb') as f:
+            pickle.dump(final_model_pipeline, f)
+        print("[SUCCESS] Standard pickle export successful!")
+    except Exception as e:
+        print(f"[WARNING] Standard pickle export failed. Error: {e}")
 
 if __name__ == "__main__":
     main()

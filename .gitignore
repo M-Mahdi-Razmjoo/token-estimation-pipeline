@@ -1,3 +1,5 @@
 data/*
+data_enriched/*
 !data/.gitkeep
+!data_enriched/.gitkeep
 .venv/
