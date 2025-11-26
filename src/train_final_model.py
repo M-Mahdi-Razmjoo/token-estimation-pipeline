@@ -1,5 +1,3 @@
-# In src/train_final_model.py
-
 import os
 import argparse
 import pandas as pd
@@ -15,25 +13,21 @@ import json
 try:
     from pymilo import Export, Import
     PYMILO_AVAILABLE = True
-    print("Pymilo library (v1.x) found. An export will be attempted.")
+    print("Pymilo library found.")
 except ImportError:
     PYMILO_AVAILABLE = False
-    print("Warning: Pymilo library not found. The Pymilo export step will be skipped.")
+    print("Pymilo library not found.")
 
 import config
 from data_loader import DataLoader
 from final_config import BEST_HYPERPARAMS
 
 def main():
-    # --- START: CRITICAL BUG FIX (RE-ADD ARGPARSE) ---
-    # This block was accidentally removed in a previous version.
-    # It is responsible for parsing command-line arguments and defining the 'args' object.
     parser = argparse.ArgumentParser(description="Train and save a final model with the best hyperparameters.")
     parser.add_argument('--tokenizer', required=True, choices=config.TOKENIZER_COLUMNS.keys())
     parser.add_argument('--model-type', required=True, choices=['linear', 'mlp', 'rf', 'et'])
     parser.add_argument('--scope', required=True, choices=config.LANGUAGE_SCOPES)
     args = parser.parse_args()
-    # --- END: CRITICAL BUG FIX ---
 
     print(f"--- Training Final Model ---")
     print(f"Model Type: {args.model_type.upper()}, Tokenizer: {args.tokenizer}, Scope: {args.scope}")
