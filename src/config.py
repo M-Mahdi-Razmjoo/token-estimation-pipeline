@@ -43,6 +43,8 @@ NONLINEAR_SELECTED_FEATURES = [
     'punctuation_proportion'
 ]
 
+LINEAR_BOOST_SELECTED_FEATURES = NONLINEAR_SELECTED_FEATURES
+
 MLP_PARAM_GRID = {
     'model__hidden_layer_sizes': [(100,), (250,), (100, 50), (150, 75, 25), (100, 100, 100)],
     'model__activation': ['relu', 'tanh'],
@@ -57,4 +59,11 @@ ET_PARAM_GRID = {
     'model__n_estimators': [50, 100],
     'model__max_depth': [10, 20, None],
     'model__min_samples_leaf': [5, 10],
+}
+
+LINEAR_BOOST_PARAMS = {
+    "n_estimators": 500,
+    "learning_rate": 0.05,
+    "reg_alpha": 0.0,
+    "reg_lambda": 1.0,
 }

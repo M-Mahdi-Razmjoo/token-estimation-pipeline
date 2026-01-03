@@ -39,4 +39,9 @@ for script in "$SCRIPT_DIR"/et_models/*.bash; do
 done
 echo
 
+echo "step 7: training linear boosting models"
+"$SCRIPT_DIR/linear_boost_models/run_all.bash"
+echo
+
+
 echo "pipeline completed successfully."
