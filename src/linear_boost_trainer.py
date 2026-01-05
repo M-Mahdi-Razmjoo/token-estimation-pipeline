@@ -215,10 +215,5 @@ def train_linear_boost_model_pipeline(target_column: str, language_scope: str, t
         f.write(f"  - MAE:  {summary['mae_mean']:.10f} (std: {summary['mae_std']:.10f})\n")
         f.write(f"  - RMSE: {summary['rmse_mean']:.10f} (std: {summary['rmse_std']:.10f})\n\n")
 
-        f.write("notes\n")
-        f.write("------------------------------------------------------------\n")
-        f.write("- This is an ensemble of linear weak learners (AdaBoost.R2).\n")
-        f.write("- There is no single (a,b) closed-form like plain linear regression.\n\n")
-
         f.write(f"saved model: {model_path}\n")
         f.write(f"saved report: {results_path}\n")
