@@ -62,8 +62,18 @@ ET_PARAM_GRID = {
 }
 
 LINEAR_BOOST_PARAMS = {
-    "n_estimators": 500,
-    "learning_rate": 0.05,
-    "reg_alpha": 0.0,
-    "reg_lambda": 1.0,
+    "base_estimator_params": {
+        "loss": "squared_error",
+        "penalty": "l2",
+        "alpha": 1e-4,
+        "max_iter": 2000,
+        "tol": 1e-3,
+        "random_state": 42,
+    },
+    "adaboost_params": {
+        "n_estimators": 200,
+        "learning_rate": 0.5,
+        "loss": "linear",
+        "random_state": 42,
+    }
 }

@@ -39,8 +39,11 @@ for script in "$SCRIPT_DIR"/et_models/*.bash; do
 done
 echo
 
-echo "step 7: training linear boosting models"
-"$SCRIPT_DIR/linear_boost_models/run_all.bash"
+echo "step 4: training linear_boost (AdaBoost) models"
+for script in "$SCRIPT_DIR"/linear_boost_models/*.bash; do
+    echo "running: $script"
+    "$script"
+done
 echo
 
 
